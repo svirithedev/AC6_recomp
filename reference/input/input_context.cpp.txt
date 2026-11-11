@@ -46,7 +46,9 @@ constexpr uint32_t kOffAnalogC = 0xF58;       // 32 floats
 // Mirror bits observed: dpad_down=1, dpad_left=2 (so up=0, right=3), A=5,
 // X=6, B=7, START=10, BACK=11.
 
-// Original lines 149-154
+// Original lines 147-154
+// Button identities from field testing. A/B corrected 2026-08-09: the
+// M2 round-2 report had these two the wrong way round, which swapped the
 // mouse buttons in game (LMB fired missiles, RMB the gun).
 // A=machine gun, B=missile/fire, X=map/radar, Y=switch target,
 // RS-click=change view, LS-click=gear, BACK=change weapon, START=pause.

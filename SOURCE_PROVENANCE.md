@@ -10,7 +10,7 @@ This is a reference-only derivative of the public repository, not a decompilatio
 |---|---|---|
 | `LICENSE` | `LICENSE` | Byte-for-byte copy; all notice and license terms retained. |
 | `reference/flight/ac6_fps_physics_fix.cpp` | `src/ac6_backend_fixes/ac6_fps_physics_fix.cpp` | Byte-for-byte complete file; archived host patch, including its original annotations and wrapper context. |
-| `reference/input/input_context.cpp.txt` | `src/ac6_backend_fixes/ac6_kbm_input.cpp` | Original lines 3-18, 106-128, 149-154 and 1400-1408; only added provenance/section comments. |
+| `reference/input/input_context.cpp.txt` | `src/ac6_backend_fixes/ac6_kbm_input.cpp` | Original lines 3-18, 106-128, 147-154 and 1400-1408; only added provenance/section comments. |
 | `reference/timing/frame_delta.cpp.txt` | `src/render_hooks.cpp` | Original lines 211-218; only added provenance/section comments. |
 | `reference/functions.tsv` | `ac6recomp_config.toml`, `[functions]` | Exported address and name fields to a tab-separated lookup; added label-status classification. Build/codegen configuration and runtime patch directives are not retained. |
 | `README.md`, `.gitignore`, this file | Newly authored | Describe the actual retained scope and prevent accidental addition of local game files. |
