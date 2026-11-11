@@ -1,0 +1,66 @@
+// AC6 input/context observations from the upstream host-input patch.
+// Archived reading reference; not a standalone game implementation.
+// Upstream: sal063/AC6_recomp @ 09144bb092ad871584808aeead69c395edbd5200
+// Source: src/ac6_backend_fixes/ac6_kbm_input.cpp
+
+// Original lines 3-18
+// The engine digests all input into per-context galib::CGaUserInput instances
+// living in the static system singleton (ptr at [0x826E4E54], object
+// 0x829E6640). Each instance holds 32 abstract action bits + 32 analog action
+// floats, rebuilt every frame by CGaUserInput::Update (rex_sub_82211E28,
+// called by the pump 0x821CA940 with f1 = frame delta):
+//
+//   +0xE44 level   (held action bits)      +0xE48 previous level
+//   +0xE4C pressed-edge                    +0xE50 released-edge
+//   +0xE54 pressed-edge + auto-repeat      (+0x1058/+0x105C repeat delay/rate)
+//   +0xE58/+0xED8/+0xF58/+0xFD8 analog action arrays (32 floats each)
+//
+// Menus consume instance[1] (singleton+0x256F0): confirm/cancel from the
+// pressed-edge word, up/down from the repeat word. Flight consumes
+// instance[2] (singleton+0x26854). Per-context keymaps therefore need no mode
+// detection: menu keys are injected into [1], flight keys (M2+) into [2] -
+// the game's own indirection is the context switch.
+
+// Original lines 106-128
+// ---- Engine addresses (verified, docs/re/subsystems/input.md) --------------
+constexpr uint32_t kSingletonPtrGlobal = 0x826E4E54;
+constexpr uint32_t kInstanceOffsets[4] = {0x2458C, 0x256F0, 0x26854, 0x279B8};
+constexpr uint32_t kMenuInstance = 0x256F0;    // instance[1]
+constexpr uint32_t kFlightInstance = 0x26854;  // instance[2]
+
+constexpr uint32_t kOffLevel = 0xE44;
+constexpr uint32_t kOffPressed = 0xE4C;
+constexpr uint32_t kOffReleased = 0xE50;
+constexpr uint32_t kOffRepeat = 0xE54;
+constexpr uint32_t kOffRepeatDelay = 0x1058;  // float: initial auto-repeat delay
+constexpr uint32_t kOffRepeatRate = 0x105C;   // float: auto-repeat interval
+constexpr uint32_t kOffAnalogA = 0xE58;       // 32 floats
+constexpr uint32_t kOffAnalogC = 0xF58;       // 32 floats
+
+// ---- Menu actions as MIRROR bits --------------------------------------------
+// Round-4 pad ground truth: every context instance has its OWN action-bit
+// layout, derived from per-instance binding masks (inst+4+8+a*4, one u32 of
+// MIRROR-space button bits per action slot). So keyboard keys are expressed
+// as mirror-bit presses (exactly what the pad produces after the remap in the
+// mirror refresh) and translated per instance through its live mask table.
+// Mirror bits observed: dpad_down=1, dpad_left=2 (so up=0, right=3), A=5,
+// X=6, B=7, START=10, BACK=11.
+
+// Original lines 149-154
+// mouse buttons in game (LMB fired missiles, RMB the gun).
+// A=machine gun, B=missile/fire, X=map/radar, Y=switch target,
+// RS-click=change view, LS-click=gear, BACK=change weapon, START=pause.
+// Names and order follow AC7's PC keyboard screen (user request); AC6-only
+// actions (pause, wingman, gear) append at the end. AC7 actions with no AC6
+// equivalent (flare, radio, highlight-target) are omitted.
+
+// Original lines 1400-1408
+// Primary flight heartbeat, called from the fps-physics wrappers in
+// ac6_fps_physics_fix.cpp: the main force step rex_sub_823046A0 (airborne),
+// the alternate step rex_sub_82305278 (rolling on the ground, mode bit 0x40),
+// and - player-scoped - the master updates plus the ground-state maintainer,
+// which still tick at a full standstill where the deactivated model (bit
+// 0x80) steps neither. All of them halt when the sim halts, so menus and
+// pause still fall back to the menu key set. The sampler hook below turned
+// out to be control-mode dependent (never fired in the M2 round-1 field
+// test), so it stays only as a secondary signal.

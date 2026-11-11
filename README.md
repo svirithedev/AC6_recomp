@@ -1,224 +1,33 @@
-# AC6Recomp
+# AC6 technical reference
 
-> [!CAUTION]
-> This project is still work in progress. It can boot and run in-game, but bugs, crashes, and missing functionality should be expected.
+A reference-only fork of [sal063/AC6_recomp](https://github.com/sal063/AC6_recomp), retaining AC6-specific reverse-engineering findings for reading.
 
-A native PC port of **Ace Combat 6: Fires of Liberation** built on top of the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk). The Xbox 360 PowerPC game code is statically recompiled to x86-64, while visible rendering currently remains authoritative in the vendored RexGlue/Xenia graphics backend.
+The tracked material contains annotated host patches and an address map. The original AC6 gameplay routines were generated locally from the retail executable and are not present in upstream Git. This fork does not recover their missing bodies or provide a complete aircraft, missile or enemy-AI implementation.
 
----
+## Read these files
 
-## Disclaimer
-
-This project is an unofficial, non-commercial fan effort. It is **not affiliated with, endorsed by, or associated with** Bandai Namco Entertainment, Project Aces, or Microsoft. *Ace Combat 6: Fires of Liberation* and all related assets, characters, and trademarks are the property of their respective owners.
-
-**This repository contains source code only. It does not contain, and will never contain, any game data.** To use this software you must supply your own legally obtained copy of the game. No game files, disc images, DLC packages, title updates, or console keys are distributed here, and none may be committed to this repository.
-
-The software is provided as-is, without warranty of any kind. It is experimental: expect bugs, crashes, and visual or audio differences from the original console release. Do not redistribute builds bundled with game data.
-
----
-
-## Features
-
-Everything listed here is on by default unless noted, and each fix can be turned off individually.
-See [Important console variables](#important-console-variables).
-
-- **60 FPS.** The game can now run up to 60 FPS, with the flight model corrected.
-- **High quality terrain.** Terrain is drawn at the full resolution shipped on the disc, twice what the console rendered. Cracks and seams that appear over mountains are also removed.
-- **Resolution scaling.** Render internally at 2× (1440p) or 3× (2160p) and beyond for a much sharper image.
-- **Ultrawide support.** Optional hor+ widescreen in missions and cutscenes.
-- **AC7-like keyboard and mouse controls.** Mouse steering, remappable bindings, live-reloaded from a config file. Controllers work out of the box, including a virtual pad when none is connected.
-- **Japanese language support.**
-- **Texture replacement modding** — see [Modding docs](#modding-docs).
-
-### Fixes
-
-*Most of the known issues with the recomp have been fixed. Please report if you have found more issues.*
-
-*Performance is a known issue with the recomp! Due to native renderer not yet implemented, a powerful GPU is recommended to be able to run the game at 60 FPS at high resolution!*
-
----
-
-## Quick Start Guide
-
-### Requirements
-
-| | |
+| File | What it contains |
 |---|---|
-| **OS** | Windows 10 or 11, 64-bit |
-| **CPU** | **Must support AVX2** — Intel 4th-gen Core (2013) or newer, AMD Zen (2017) or newer. |
-| **GPU** | Direct3D 12 capable |
-| **Game data** | Your own legally obtained copy of Ace Combat 6 (US region only! Europe and Japan is not supported) |
+| [Flight dynamics](reference/flight/ac6_fps_physics_fix.cpp) | The complete upstream annotated flight-timing patch, preserved byte for byte. Its comments identify force/input/update routines, aircraft fields, energy loss, path-direction behavior and ground-state transitions. |
+| [Input context](reference/input/input_context.cpp.txt) | Selected native input-layout and context observations, excluding most Windows keyboard/mouse injection machinery. |
+| [Frame timing](reference/timing/frame_delta.cpp.txt) | The upstream observation about quantized frame deltas and unlocked-rate bias. |
+| [Function map](reference/functions.tsv) | 10,527 address-keyed entries extracted from the upstream configuration; 10,492 generic address labels and 35 unnamed entries. These are not recovered semantic function names. |
+| [Provenance](SOURCE_PROVENANCE.md) | Exact upstream commit, original paths, excerpt spans, transformations and source hashes. |
 
-*Note that the system requirement does not guarantees that the recomp will perform well on your system!*
+The flight file remains an archived **host patch**: its imports, hook macros and calls refer to the removed SDK and untracked generated routines. They are retained to preserve the original analysis, not as a compilable program. Excerpts likewise are reading material, not complete translation units. Claims of verification or measurement inside those files belong to the upstream authors; this fork has not independently reproduced them.
 
-### Steps
+## Removed
 
-1. **Get a build.** Either download from release, or build from source (see [How to build](#how-to-build)).
+The current tree excludes the vendored SDK, compiler/code-generator integration, CMake and presets, launcher/build scripts, port application and entry points, renderer/backends, asset extraction/export tools and original build/modding documentation. No executable, game ISO, XEX, game asset or generated retail-game routine is included. There is no build or launch workflow.
 
-2. **Provide the game data.** Put *one* of the following next to `ac6recomp.exe`:
-   - the game's `.iso` disc image **or**
-   - an `assets/` folder containing the extracted game files.
+Normal upstream Git history remains available through the fork relationship. The current default branch is the reference-only snapshot.
 
-4. **(Optional) Add DLC.** Extracted DLC packages can be placed next to the executable, inside a folder named `dlc/`.
+## How to use it
 
-5. **Run `ac6recomp.exe`.** On first run it creates `ac6recomp.toml` beside the executable, which contains the game settings.
+Use the preserved annotations to form research questions and identify candidate routines. Compare their reported behavior with reproducible gameplay measurements before relying on it. Exact addresses concern the upstream executable revision, advertised as the US release; another region/revision must be identified separately.
 
-6. **In-game keys:**
-   - `F3` - toggle FPS overlay
-   - `F4` - settings overlay (browse and change most options live)
-   - `F11` - toggle fullscreen
-
----
-
-## Important console variables
-
-Settings live in **`ac6recomp.toml`** next to the executable. Most can also be changed live in the `F4` overlay. Some only take effect after a restart.
-
-> [!IMPORTANT]
-> In `.toml`, **use forward slashes in paths**. A single backslash is an escape character and one bad line silently voids the entire file, sending every setting back to its default.
-
-| cvar | default | what it does |
-|---|---|---|
-| `user_language` | `1` | Sets the language. `1` for English, `2` for Japanese. |
-| `fullscreen` | `false` | Start in fullscreen (`F11` toggles at runtime) |
-| `draw_resolution_scale_x` | `1` | Internal render scale on the x axis. `1` for 1280, `2` for 2560, `3` for 3840, etc. |
-| `draw_resolution_scale_y` | `1` | Internal render scale on the y axis. `1` for 720, `2` for 1440, `3` for 2160, etc. |
-| `ac6_unlock_fps` | `true` | Allow framerates above the stock 30 fps |
-| `ac6_dynamic_vblank` | `true` | Keep menus and cutscenes at their native 60 Hz pacing while gameplay runs at your target |
-| `ac6_performance_mode` | `true` | Reduces logging and diagnostic overhead |
-| `ac6_widescreen` | `false` | Ultrawide support (hor+) in missions. Menus and hangar stay 16:9 |
-| `ac6_widescreen_cinematics` | `true` | With ultrawide on, also widen in-engine cinematics. They are staged for 16:9, so this can expose set edges |
-| `ac6_terrain_hd` | `true` | Draw terrain at the full shipped resolution (2× what the console drew), which also removes terrain cracks |
-| `ac6_fullres_effects` | `false` | Draw clouds, smokes, trails, and afterburner effect at native resolution (2× what the console drew), slightly affects performance |
-| `ac6_cursor_hide_seconds` | `3.0` | Hide the mouse cursor after this many idle seconds. `0` = never hide |
-| `ac6_kbm_enabled` | `false` | **Enable keyboard and mouse controls.** Off by default — controllers work out of the box |
-| `ac6_kbm_config` | `ac6_input.toml` | Path to the key bindings file. Edits are picked up live |
-| `ac6_texture_swaps_enabled` | `false` | Enable texture replacement mods (see [Modding docs](#modding-docs)) |
-
-For 1440p, set both `draw_resolution_scale_x` and `draw_resolution_scale_y` to `2`. For 2160p or 4K, set them to `3`.
-
-For 1440p Ultrawide, it is recommended to set `draw_resolution_scale_x` to `3` and `draw_resolution_scale_y` to `2`.
-
-### Fixes
-
-These are on by default and exist so a problem can be isolated. Turning one off restores the original behavior, bugs included.
-
-| cvar | default | what it fixes |
-|---|---|---|
-| `ac6_effect_mode_fix` | `false` | **IMPORTANT: If your clouds and afterburner effects are flickering, set this to `true`!** |
-| `ac6_fix_scaling` | `true` | Upscaling mosaic on deferred passes (only active above 1× scale) |
-| `ac6_fix_deswizzle` | `true` | Mosaic and streak artifacts from the game's manual texture de-swizzle |
-| `ac6_fix_dof` | `true` | Cutscene depth-of-field striping and ghosting above 1× scale |
-| `ac6_fix_trails` | `true` | Invisible missile and jet trails |
-| `ac6_fix_water_line` | `true` |  Lines across open water seen at a grazing angle |
-| `ac6_flare_drop_quad2` | `true` | Faint rectangle around the sun |
-| `ac6_cutscene_resync` | `true` | Keeps cutscene video locked to its audio after a render hitch |
-
----
-
-## Default keybinds
-
-Controllers work with no configuration. **Keyboard and mouse are off by default**. Set `ac6_kbm_enabled = true` to enable them.
-
-Bindings live in `ac6_input.toml`, created next to the executable on first run after `ac6_kbm_enabled` is enabled. By default, the keybinds are similar to Ace Combat 7.
-
-### Flight
-
-| action | keys | | action | keys |
-|---|---|---|---|---|
-| Pitch down / up | `1` / `3` | | Fire machine gun | `Mouse1`, `Left Ctrl` |
-| Roll left / right | `A` / `D` | | Fire missile | `Mouse2`, `Space` |
-| Yaw left / right | `Q` / `E` | | Change weapon | `Mouse wheel`, `C` |
-| Accelerate | `W` | | Switch targets | `Tab` |
-| Decelerate | `S` | | Change view | `V` |
-| High-G turn | `2` | | Radar / map | `R` |
-| Autopilot | `Z`, `X` | | Landing gear | `G` |
-| Pause | `Escape` | | | |
-
-**Mouse** steers the aircraft. Hold `Left Alt` (camera control) to look around with the mouse instead of steering.
-
-**Camera:** `Numpad 8` / `2` / `4` / `6` — up / down / left / right.
-
-**Wingman commands:** arrow keys.
-
-### Menus
-
-| action | keys |
-|---|---|
-| Navigate | `W` `A` `S` `D` or arrow keys |
-| Confirm | `Space`, `Mouse1` |
-| Cancel | `Escape`, `Backspace`, `Mouse2` |
-| Start | `Enter` |
-| Back | `Tab` |
-
----
-
-## How to build
-
-### Option A: Automatic setup (recommended)
-
-The automated build script handles environment setup, ISO extraction, and the multi-step CMake build:
-
-1. Place your legally obtained **Ace Combat 6 ISO** in the repository root directory.
-2. Run `setup_and_build.bat`. The script locates Visual Studio, extracts the assets, runs codegen, and builds the runtime using the MSVC backend.
-3. Copy the compiled executable and default config to the root directory to run:
-   ```powershell
-   Copy-Item out/build/win-amd64-relwithdebinfo/ac6recomp.exe . -Force
-   Copy-Item out/build/win-amd64-relwithdebinfo/ac6recomp.toml . -Force
-   ```
-4. Run `ac6recomp.exe` directly from the root directory.
-5. Optionally create a shortcut to the executable.
-
-### Option B: Manual build
-
-```bash
-cmake --preset win-amd64-relwithdebinfo
-cmake --build --preset win-amd64-relwithdebinfo --target ac6recomp_codegen
-cmake --preset win-amd64-relwithdebinfo
-cmake --build --preset win-amd64-relwithdebinfo
-```
-
-The executable is placed at `out/build/win-amd64-relwithdebinfo/ac6recomp.exe`.
-
-On Windows, use the preset commands above rather than plain `cmake -L` in the repo root. If you previously configured from an `x86` Visual Studio prompt or with the wrong compiler on `PATH`, delete `out/build/win-amd64-relwithdebinfo` and re-run the preset from a normal 64-bit PowerShell/CMD window or an x64 Native Tools prompt.
-
----
-
-## Repository policy
-
-This repository contains source code only.
-
-Do **not** commit or redistribute:
-
-- retail game data
-- `default.xex`
-- disc images, packages, title updates, or firmware files
-- console keys or any other proprietary Microsoft / publisher material
-
-Users must supply their own legally obtained game files locally.
-
-## Modding docs
-
-- [Texture Swap Modding Guide](docs/TEXTURE_SWAP_MODDING_GUIDE.txt)
-- [Texture Swap Reference](docs/TEXTURE_SWAPS.txt)
-
-
-## Project layout
-
-```text
-AC6_recomp/
-|- src/
-|  |- ac6_backend_fixes/       AC6-specific backend diagnostics and fix routing
-|  |- ac6_native_graphics.*    AC6 frame-boundary analysis and overlay status
-|  |- ac6_native_renderer/     Experimental replay renderer and research tooling
-|  |- d3d_hooks.*              Guest D3D capture and shadow-state hooks
-|  `- render_hooks.*           Timing and frame pacing hooks
-|- thirdparty/rexglue-sdk/     Vendored RexGlue SDK
-|- generated/                  Generated recomp sources
-|- assets/                     Local game files, not kept in repo
-`- docs/RENDERER_ARCHITECTURE.txt
-```
+For an independently written game, pass descriptive findings and acceptance scenarios to implementation work. This reference is not a ready gameplay library, and translating retail routines into another language would not establish rights to reuse them.
 
 ## License
 
-See [LICENSE](LICENSE).
+[BSD-3-Clause](LICENSE), with the upstream notice preserved. The license covers contributions for which the licensors hold rights; it does not grant rights to publisher-owned game files. No game data was used to prepare this fork.

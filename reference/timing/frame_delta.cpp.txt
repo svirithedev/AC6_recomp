@@ -1,0 +1,14 @@
+// AC6 frame-delta observation from the upstream presentation hook.
+// Archived reading reference; not a standalone game implementation.
+// Upstream: sal063/AC6_recomp @ 09144bb092ad871584808aeead69c395edbd5200
+// Source: src/render_hooks.cpp
+
+// Original lines 211-218
+// Fires right after the game turns the measured frame time into its integer
+// delta: r8 = min(floor(elapsed*100 / (freq/divisor)) + 1, 100). Under the
+// unlock the floor plus the +1 guard bias the delta high by (1 - frac) every
+// frame - a systematic speed-up at unlocked framerates (+2% @60fps, +10% @300).
+// Carry the fractional remainder across frames so the SUM of integer deltas
+// tracks real time exactly. Only active while the divisor remap is (r29 == 30);
+// otherwise the vanilla value passes through and the remainder resets so no
+// stale correction leaks across mode changes.
